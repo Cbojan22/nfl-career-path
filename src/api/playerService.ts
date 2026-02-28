@@ -18,9 +18,9 @@ function getPositionKeysForDifficulty(difficulty: Difficulty): string[] {
     case 'easy':
       return SKILL_POSITIONS;
     case 'medium':
-      return [...SKILL_POSITIONS, ...OL_POSITIONS];
+      return [...SKILL_POSITIONS, ...DEFENSE_POSITIONS];
     case 'hard':
-      return [...SKILL_POSITIONS, ...OL_POSITIONS, ...DEFENSE_POSITIONS];
+      return [...SKILL_POSITIONS, ...DEFENSE_POSITIONS, ...OL_POSITIONS];
     case 'master':
       return [];
   }

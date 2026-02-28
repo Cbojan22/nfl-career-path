@@ -147,6 +147,15 @@ export function GameContainer() {
           )}
         </section>
 
+        {/* Position Hint */}
+        {currentPlayer?.position && phase !== 'loading' && (
+          <div className="flex justify-center">
+            <span className="px-3 py-1 bg-blue-600/20 border border-blue-500/30 rounded-full text-sm text-blue-300 font-medium">
+              Position: {currentPlayer.position}
+            </span>
+          </div>
+        )}
+
         {/* Guess Input or Reveal */}
         <section>
           {phase === 'guessing' && (

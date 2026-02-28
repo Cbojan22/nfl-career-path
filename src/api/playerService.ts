@@ -1,8 +1,59 @@
 // Transforms ESPN API data into GamePlayer — pure TypeScript
 
-import { fetchAthleteDetail, fetchAthleteBio, fetchAllTeams, fetchTeamRoster } from './espnApi';
+import { fetchAthleteDetail, fetchAthleteBio, fetchAllTeams, fetchTeamRoster, fetchTeamDepthChart } from './espnApi';
 import { getCached, setCache } from './cache';
-import type { GamePlayer, CareerStop, RosterPlayer } from './types';
+import type { GamePlayer, CareerStop, RosterPlayer, Difficulty } from './types';
+
+/** Depth chart position keys by difficulty tier */
+const SKILL_POSITIONS = ['qb', 'rb', 'wr1', 'wr2', 'wr3', 'te'];
+const OL_POSITIONS = ['lt', 'lg', 'c', 'rg', 'rt'];
+const DEFENSE_POSITIONS = [
+  'lde', 'rde', 'ldt', 'rdt',
+  'wlb', 'mlb', 'slb',
+  'lcb', 'rcb', 'ss', 'fs',
+];
+
+function getPositionKeysForDifficulty(difficulty: Difficulty): string[] {
+  switch (difficulty) {
+    case 'easy':
+      return SKILL_POSITIONS;
+    case 'medium':
+      return [...SKILL_POSITIONS, ...OL_POSITIONS];
+    case 'hard':
+      return [...SKILL_POSITIONS, ...OL_POSITIONS, ...DEFENSE_POSITIONS];
+    case 'master':
+      return [];
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractStartersFromDepthChart(depthChartData: any, positionKeys: string[]): RosterPlayer[] {
+  const players: RosterPlayer[] = [];
+  const seenIds = new Set<string>();
+
+  // Response: { depthchart: [{ name, positions: { [key]: { athletes: [{ id, displayName, ... }] } } }] }
+  const charts = depthChartData?.depthchart ?? [];
+  for (const chart of charts) {
+    const positions = chart.positions ?? {};
+    for (const posKey of positionKeys) {
+      const posData = positions[posKey];
+      if (!posData?.athletes?.length) continue;
+      const starter = posData.athletes[0]; // index 0 = starter
+      const id = String(starter.id);
+      if (seenIds.has(id)) continue;
+      seenIds.add(id);
+
+      players.push({
+        id,
+        fullName: starter.displayName || 'Unknown',
+        position: posKey.replace(/\d+$/, '').toUpperCase(), // 'wr1' -> 'WR'
+        headshotUrl: `https://a.espncdn.com/i/headshots/nfl/players/full/${id}.png`,
+      });
+    }
+  }
+
+  return players;
+}
 
 export async function buildGamePlayer(playerId: string): Promise<GamePlayer> {
   const cached = getCached<GamePlayer>(`player-${playerId}`);
@@ -20,7 +71,6 @@ export async function buildGamePlayer(playerId: string): Promise<GamePlayer> {
   const college = athlete.college;
   if (college) {
     const collegeName = college.name || college.shortName || 'Unknown College';
-    // College logos aren't in this endpoint; construct from ESPN CDN using college ID
     const collegeLogo = college.id
       ? `https://a.espncdn.com/i/teamlogos/ncaa/500/${college.id}.png`
       : '';
@@ -68,38 +118,53 @@ export async function buildGamePlayer(playerId: string): Promise<GamePlayer> {
   return player;
 }
 
-export async function loadPlayerPool(): Promise<RosterPlayer[]> {
-  const cached = getCached<RosterPlayer[]>('player-pool');
+export async function loadPlayerPool(difficulty: Difficulty = 'easy'): Promise<RosterPlayer[]> {
+  const cacheKey = `player-pool-${difficulty}`;
+  const cached = getCached<RosterPlayer[]>(cacheKey);
   if (cached) return cached;
 
   const teams = await fetchAllTeams();
 
-  // Pick 8 random teams
-  const shuffled = [...teams].sort(() => Math.random() - 0.5);
-  const selectedTeams = shuffled.slice(0, 8);
+  let pool: RosterPlayer[];
 
-  // Fetch rosters in parallel
-  const rosterPromises = selectedTeams.map((team) =>
-    fetchTeamRoster(String(team.id)).catch(() => [])
-  );
-  const rosters = await Promise.all(rosterPromises);
+  if (difficulty === 'master') {
+    // Master: 8 random teams, full rosters, experience >= 1 year
+    const shuffled = [...teams].sort(() => Math.random() - 0.5);
+    const selectedTeams = shuffled.slice(0, 8);
 
-  const pool: RosterPlayer[] = rosters.flatMap((roster) =>
-    roster
-      // Filter to players with at least 1 year of NFL experience
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((p: any) => (p.experience?.years ?? 0) >= 1)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((p: any) => ({
-        id: String(p.id),
-        fullName: p.displayName || p.fullName || 'Unknown',
-        position: p.position?.abbreviation || '',
-        headshotUrl:
-          p.headshot?.href ||
-          `https://a.espncdn.com/i/headshots/nfl/players/full/${p.id}.png`,
-      }))
-  );
+    const rosterPromises = selectedTeams.map((team) =>
+      fetchTeamRoster(String(team.id)).catch(() => [])
+    );
+    const rosters = await Promise.all(rosterPromises);
 
-  setCache('player-pool', pool, 12 * 60 * 60 * 1000);
+    pool = rosters.flatMap((roster) =>
+      roster
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((p: any) => (p.experience?.years ?? 0) >= 1)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((p: any) => ({
+          id: String(p.id),
+          fullName: p.displayName || p.fullName || 'Unknown',
+          position: p.position?.abbreviation || '',
+          headshotUrl:
+            p.headshot?.href ||
+            `https://a.espncdn.com/i/headshots/nfl/players/full/${p.id}.png`,
+        }))
+    );
+  } else {
+    // Easy/Medium/Hard: all 32 teams, depth chart starters only
+    const positionKeys = getPositionKeysForDifficulty(difficulty);
+
+    const depthChartPromises = teams.map((team) =>
+      fetchTeamDepthChart(String(team.id)).catch(() => null)
+    );
+    const depthCharts = await Promise.all(depthChartPromises);
+
+    pool = depthCharts.flatMap((dc) =>
+      dc ? extractStartersFromDepthChart(dc, positionKeys) : []
+    );
+  }
+
+  setCache(cacheKey, pool, 12 * 60 * 60 * 1000);
   return pool;
 }

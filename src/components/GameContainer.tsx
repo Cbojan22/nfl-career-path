@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Header } from './Header';
 import { Timeline, TimelineSkeleton } from './Timeline/Timeline';
 import { GuessInput } from './GuessInput/GuessInput';
@@ -7,11 +7,28 @@ import { LoadingState } from './LoadingState';
 import { usePlayerPool } from '../hooks/usePlayerPool';
 import { useGame } from '../hooks/useGame';
 import { useStreak } from '../hooks/useStreak';
+import type { Difficulty } from '../api/types';
+
+const DIFFICULTY_STORAGE_KEY = 'nfl-game-difficulty';
+
+function loadSavedDifficulty(): Difficulty {
+  try {
+    const saved = localStorage.getItem(DIFFICULTY_STORAGE_KEY);
+    if (saved && ['easy', 'medium', 'hard', 'master'].includes(saved)) {
+      return saved as Difficulty;
+    }
+  } catch {
+    // ignore
+  }
+  return 'easy';
+}
 
 export function GameContainer() {
-  const { pool, loading: poolLoading, error: poolError, pickRandomPlayer } = usePlayerPool();
+  const [difficulty, setDifficulty] = useState<Difficulty>(loadSavedDifficulty);
+
+  const { pool, loading: poolLoading, error: poolError, pickRandomPlayer } = usePlayerPool(difficulty);
   const { phase, currentPlayer, loadError, startRound, submitGuess, skipPlayer } = useGame();
-  const { streak, recordCorrect, recordIncorrect } = useStreak();
+  const { streak, recordCorrect, recordIncorrect } = useStreak(difficulty);
   const startingRound = useRef(false);
 
   const startNewRound = useCallback(async () => {
@@ -39,6 +56,16 @@ export function GameContainer() {
     }
   }, [poolLoading, pool.length, startNewRound]);
 
+  const handleDifficultyChange = useCallback((newDifficulty: Difficulty) => {
+    if (newDifficulty === difficulty) return;
+    setDifficulty(newDifficulty);
+    try {
+      localStorage.setItem(DIFFICULTY_STORAGE_KEY, newDifficulty);
+    } catch {
+      // ignore
+    }
+  }, [difficulty]);
+
   const handleGuess = useCallback(
     (playerId: string) => {
       const isCorrect = submitGuess(playerId);
@@ -60,11 +87,17 @@ export function GameContainer() {
     startNewRound();
   }, [startNewRound]);
 
+  const headerProps = {
+    streak,
+    difficulty,
+    onDifficultyChange: handleDifficultyChange,
+  };
+
   // Pool loading
   if (poolLoading) {
     return (
       <div className="min-h-screen bg-gray-900 text-white">
-        <Header streak={streak} />
+        <Header {...headerProps} />
         <LoadingState message="Building player pool..." />
       </div>
     );
@@ -74,7 +107,7 @@ export function GameContainer() {
   if (poolError) {
     return (
       <div className="min-h-screen bg-gray-900 text-white">
-        <Header streak={streak} />
+        <Header {...headerProps} />
         <div className="flex flex-col items-center justify-center gap-4 py-12">
           <p className="text-red-400">Failed to load players: {poolError}</p>
           <button
@@ -90,7 +123,7 @@ export function GameContainer() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
-      <Header streak={streak} />
+      <Header {...headerProps} />
 
       <main className="max-w-3xl mx-auto py-6 flex flex-col gap-6">
         {/* Timeline */}

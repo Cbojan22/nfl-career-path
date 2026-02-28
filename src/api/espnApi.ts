@@ -35,6 +35,13 @@ export async function fetchTeamRoster(teamId: string): Promise<any[]> {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function fetchTeamDepthChart(teamId: string): Promise<any> {
+  return fetchJson(
+    `${BASE}/site/v2/sports/football/nfl/teams/${teamId}/depthcharts`
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function fetchAthleteDetail(athleteId: string): Promise<any> {
   return fetchJson(
     `${BASE}/common/v3/sports/football/nfl/athletes/${athleteId}`

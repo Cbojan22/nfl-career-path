@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { loadPlayerPool } from '../api/playerService';
-import type { RosterPlayer } from '../api/types';
+import type { RosterPlayer, Difficulty } from '../api/types';
 
-export function usePlayerPool() {
+export function usePlayerPool(difficulty: Difficulty) {
   const [pool, setPool] = useState<RosterPlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -11,7 +11,13 @@ export function usePlayerPool() {
   useEffect(() => {
     let cancelled = false;
 
-    loadPlayerPool()
+    // Reset state when difficulty changes
+    setLoading(true);
+    setError(null);
+    setPool([]);
+    recentlyShown.current.clear();
+
+    loadPlayerPool(difficulty)
       .then((players) => {
         if (!cancelled) {
           setPool(players);
@@ -28,7 +34,7 @@ export function usePlayerPool() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [difficulty]);
 
   const pickRandomPlayer = useCallback((): RosterPlayer | null => {
     if (pool.length === 0) return null;

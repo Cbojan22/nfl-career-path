@@ -46,6 +46,12 @@ export async function buildGamePlayer(playerId: string): Promise<GamePlayer> {
     careerPath.push(...nflStops);
   }
 
+  // Must have at least one NFL stop — reject college-only players
+  const hasNflStop = careerPath.some((s) => s.type === 'nfl');
+  if (!hasNflStop) {
+    throw new Error('No NFL team history');
+  }
+
   const headshotUrl =
     athlete.headshot?.href ||
     `https://a.espncdn.com/i/headshots/nfl/players/full/${playerId}.png`;
@@ -79,15 +85,19 @@ export async function loadPlayerPool(): Promise<RosterPlayer[]> {
   const rosters = await Promise.all(rosterPromises);
 
   const pool: RosterPlayer[] = rosters.flatMap((roster) =>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    roster.map((p: any) => ({
-      id: String(p.id),
-      fullName: p.displayName || p.fullName || 'Unknown',
-      position: p.position?.abbreviation || '',
-      headshotUrl:
-        p.headshot?.href ||
-        `https://a.espncdn.com/i/headshots/nfl/players/full/${p.id}.png`,
-    }))
+    roster
+      // Filter to players with at least 1 year of NFL experience
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .filter((p: any) => (p.experience?.years ?? 0) >= 1)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((p: any) => ({
+        id: String(p.id),
+        fullName: p.displayName || p.fullName || 'Unknown',
+        position: p.position?.abbreviation || '',
+        headshotUrl:
+          p.headshot?.href ||
+          `https://a.espncdn.com/i/headshots/nfl/players/full/${p.id}.png`,
+      }))
   );
 
   setCache('player-pool', pool, 12 * 60 * 60 * 1000);

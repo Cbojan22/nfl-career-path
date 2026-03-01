@@ -10,43 +10,50 @@ import { useStreak } from '../hooks/useStreak';
 import type { Difficulty } from '../api/types';
 
 const DIFFICULTY_STORAGE_KEY = 'nfl-game-difficulty';
+const VALID_DIFFICULTIES = ['easy', 'medium', 'hard', 'master'] as const;
 
 function loadSavedDifficulty(): Difficulty {
   try {
     const saved = localStorage.getItem(DIFFICULTY_STORAGE_KEY);
-    if (saved && ['easy', 'medium', 'hard', 'master'].includes(saved)) {
+    if (saved && (VALID_DIFFICULTIES as readonly string[]).includes(saved)) {
       return saved as Difficulty;
     }
   } catch {
-    // ignore
+    // localStorage unavailable
   }
   return 'easy';
 }
 
 export function GameContainer() {
   const [difficulty, setDifficulty] = useState<Difficulty>(loadSavedDifficulty);
+  const [allPlayersFailed, setAllPlayersFailed] = useState(false);
 
   const { pool, loading: poolLoading, error: poolError, pickRandomPlayer } = usePlayerPool(difficulty);
   const { phase, currentPlayer, loadError, startRound, submitGuess, skipPlayer } = useGame();
   const { streak, recordCorrect, recordIncorrect } = useStreak(difficulty);
-  const startingRound = useRef(false);
+  const roundId = useRef(0);
 
   const startNewRound = useCallback(async () => {
-    if (startingRound.current) return;
-    startingRound.current = true;
+    const thisRound = ++roundId.current;
+    setAllPlayersFailed(false);
 
     // Try up to 5 players if some fail to load career data
     for (let attempt = 0; attempt < 5; attempt++) {
+      if (roundId.current !== thisRound) return; // Cancelled by newer round
       const player = pickRandomPlayer();
       if (!player) break;
       try {
         await startRound(player);
-        break;
+        return; // Success
       } catch {
         // Try another player
       }
     }
-    startingRound.current = false;
+
+    // All attempts failed — show error
+    if (roundId.current === thisRound) {
+      setAllPlayersFailed(true);
+    }
   }, [pickRandomPlayer, startRound]);
 
   // Start first round when pool is ready
@@ -62,7 +69,7 @@ export function GameContainer() {
     try {
       localStorage.setItem(DIFFICULTY_STORAGE_KEY, newDifficulty);
     } catch {
-      // ignore
+      // localStorage unavailable
     }
   }, [difficulty]);
 
@@ -128,7 +135,17 @@ export function GameContainer() {
       <main className="max-w-3xl mx-auto py-6 flex flex-col gap-6">
         {/* Timeline */}
         <section className="bg-gray-800/50 rounded-xl border border-gray-700 mx-4">
-          {phase === 'loading' ? (
+          {allPlayersFailed ? (
+            <div className="flex flex-col items-center gap-2 py-8">
+              <p className="text-red-400 text-sm">Could not load any players. ESPN may be unavailable.</p>
+              <button
+                onClick={handleNext}
+                className="text-blue-400 hover:text-blue-300 text-sm"
+              >
+                Try again
+              </button>
+            </div>
+          ) : phase === 'loading' ? (
             loadError ? (
               <div className="flex flex-col items-center gap-2 py-8">
                 <p className="text-red-400 text-sm">{loadError}</p>

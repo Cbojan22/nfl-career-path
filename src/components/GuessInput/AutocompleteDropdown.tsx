@@ -35,7 +35,7 @@ export function AutocompleteDropdown({
         >
           <img
             src={result.headshotUrl}
-            alt=""
+            alt={result.fullName}
             className="w-8 h-8 rounded-full object-cover bg-gray-600"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none';

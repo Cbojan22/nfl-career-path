@@ -21,7 +21,7 @@ export function TimelineStop({ stop, isLast }: TimelineStopProps) {
             />
           ) : (
             <span className="text-xs text-gray-400 text-center px-1">
-              {stop.teamName.slice(0, 3)}
+              {(stop.teamName || '???').slice(0, 3)}
             </span>
           )}
         </div>

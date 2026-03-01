@@ -5,12 +5,24 @@ function getStreakKey(difficulty: Difficulty): string {
   return `nfl-game-streak-${difficulty}`;
 }
 
+function isValidStreak(val: unknown): val is StreakData {
+  return (
+    typeof val === 'object' &&
+    val !== null &&
+    typeof (val as StreakData).current === 'number' &&
+    typeof (val as StreakData).best === 'number'
+  );
+}
+
 function loadStreak(difficulty: Difficulty): StreakData {
   try {
     const raw = localStorage.getItem(getStreakKey(difficulty));
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed: unknown = JSON.parse(raw);
+      if (isValidStreak(parsed)) return parsed;
+    }
   } catch {
-    // ignore
+    // localStorage unavailable or corrupt
   }
   return { current: 0, best: 0 };
 }

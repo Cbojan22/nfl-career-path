@@ -131,11 +131,12 @@ export async function buildGamePlayer(playerId: string): Promise<GamePlayer> {
     athlete.headshot?.href ||
     `https://a.espncdn.com/i/headshots/nfl/players/full/${playerId}.png`;
 
+  const rawName = athlete.displayName || athlete.fullName;
   const player: GamePlayer = {
     id: String(athlete.id),
-    fullName: athlete.displayName || athlete.fullName || 'Unknown',
+    fullName: typeof rawName === 'string' ? rawName : 'Unknown',
     headshotUrl,
-    position: athlete.position?.abbreviation || '',
+    position: typeof athlete.position?.abbreviation === 'string' ? athlete.position.abbreviation : '',
     careerPath,
   };
 

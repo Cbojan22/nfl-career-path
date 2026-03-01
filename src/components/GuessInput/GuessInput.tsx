@@ -19,10 +19,6 @@ export function GuessInput({ onGuess, onSkip, disabled }: GuessInputProps) {
     (result: SearchResult) => {
       setSelectedPlayer(result);
       search(result.fullName);
-      // Clear the results dropdown
-      setTimeout(() => {
-        setSelectedPlayer(result);
-      }, 0);
     },
     [search]
   );

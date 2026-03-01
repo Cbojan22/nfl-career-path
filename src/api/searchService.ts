@@ -5,7 +5,7 @@ import type { SearchResult } from './types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapSearchResult(item: any): SearchResult | null {
-  if (!item.id) return null;
+  if (typeof item !== 'object' || item === null || !item.id) return null;
 
   // Team info is in teamRelationships array
   const teamRel = item.teamRelationships?.[0];

@@ -9,6 +9,7 @@ export function useAutocomplete() {
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const debounceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const currentQuery = useRef('');
+  const mounted = useRef(true);
 
   const search = useCallback((text: string) => {
     setQuery(text);
@@ -27,16 +28,15 @@ export function useAutocomplete() {
     debounceTimer.current = setTimeout(async () => {
       try {
         const items = await searchNflPlayers(text);
-        // Only update if this is still the current query
-        if (currentQuery.current === text) {
+        if (mounted.current && currentQuery.current === text) {
           setResults(items);
         }
       } catch {
-        if (currentQuery.current === text) {
+        if (mounted.current && currentQuery.current === text) {
           setResults([]);
         }
       } finally {
-        if (currentQuery.current === text) {
+        if (mounted.current && currentQuery.current === text) {
           setIsSearching(false);
         }
       }
@@ -65,6 +65,7 @@ export function useAutocomplete() {
 
   useEffect(() => {
     return () => {
+      mounted.current = false;
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
   }, []);

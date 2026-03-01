@@ -85,14 +85,39 @@ export async function buildGamePlayer(playerId: string): Promise<GamePlayer> {
   // NFL team history from bio (reverse-chronological at top level, so we reverse)
   const teamHistory = bio?.teamHistory;
   if (teamHistory && Array.isArray(teamHistory)) {
-    const nflStops: CareerStop[] = teamHistory
-      .map((entry: { displayName: string; logo: string; seasons: string }) => ({
-        type: 'nfl' as const,
-        teamName: entry.displayName || 'Unknown Team',
-        logoUrl: entry.logo || '',
-        seasons: entry.seasons || '',
-      }))
-      .reverse();
+    // Reverse to chronological, then merge consecutive stints with the same team
+    // (handles rebrands like Washington Redskins → Washington → Washington Commanders)
+    const chronological = [...teamHistory].reverse();
+    const merged: { id: string; displayName: string; logo: string; startYear: string; endYear: string }[] = [];
+
+    for (const entry of chronological) {
+      const teamId = String(entry.id || '');
+      const seasons = entry.seasons || '';
+      const [startYear, endYear] = seasons.split('-');
+      const prev = merged[merged.length - 1];
+
+      if (prev && prev.id === teamId) {
+        // Same team — extend the season range, keep the latest name/logo
+        prev.endYear = endYear || prev.endYear;
+        prev.displayName = entry.displayName || prev.displayName;
+        prev.logo = entry.logo || prev.logo;
+      } else {
+        merged.push({
+          id: teamId,
+          displayName: entry.displayName || 'Unknown Team',
+          logo: entry.logo || '',
+          startYear: startYear || '',
+          endYear: endYear || startYear || '',
+        });
+      }
+    }
+
+    const nflStops: CareerStop[] = merged.map((m) => ({
+      type: 'nfl' as const,
+      teamName: m.displayName,
+      logoUrl: m.logo,
+      seasons: m.startYear === m.endYear ? m.startYear : `${m.startYear}-${m.endYear}`,
+    }));
     careerPath.push(...nflStops);
   }
 

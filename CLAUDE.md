@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-- `npm run dev` — Start Vite dev server (served at `/nfl-career-path/` base path)
+- `npm run dev` — Start Vite dev server (served at `/turf-trails/` base path)
 - `npm run build` — TypeScript check (`tsc -b`) then Vite production build to `dist/`
 - `npm run lint` — ESLint across the project
 - `npm run preview` — Preview the production build locally
 
 ## Architecture
 
-NFL Career Path is a browser-based guessing game where players identify NFL athletes from their career timeline (college → NFL teams). React + Vite + TypeScript + Tailwind CSS v4.
+Turf Trails is a browser-based NFL guessing game where players identify NFL athletes from their career timeline (college → NFL teams). React + Vite + TypeScript + Tailwind CSS v4.
 
 **Three-layer architecture designed for future React Native migration:**
 
@@ -32,7 +32,7 @@ NFL Career Path is a browser-based guessing game where players identify NFL athl
 
 ## Deployment
 
-GitHub Pages via GitHub Actions (`.github/workflows/deploy.yml`). Pushes to `main` trigger build and deploy. The Vite `base` is set to `/nfl-career-path/`. Live at `https://cbojan22.github.io/nfl-career-path/`.
+GitHub Pages via GitHub Actions (`.github/workflows/deploy.yml`). Pushes to `main` trigger build and deploy. The Vite `base` is set to `/turf-trails/`. Live at `https://cbojan22.github.io/turf-trails/`.
 
 ## Gotchas
 

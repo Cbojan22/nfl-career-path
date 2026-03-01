@@ -10,7 +10,7 @@ interface HeaderProps {
 export function Header({ streak, difficulty, onDifficultyChange }: HeaderProps) {
   return (
     <header className="flex flex-col items-center gap-3 px-4 pt-6 pb-4">
-      <h1 className="text-3xl font-extrabold text-white tracking-tight">
+      <h1 className="text-5xl font-extrabold text-white tracking-tight">
         Turf Trails
       </h1>
       <DifficultySelector value={difficulty} onChange={onDifficultyChange} />

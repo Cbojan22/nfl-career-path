@@ -5,7 +5,8 @@ import { getCached, setCache } from './cache';
 import type { GamePlayer, CareerStop, RosterPlayer, Difficulty } from './types';
 
 /** Depth chart position keys by difficulty tier */
-const SKILL_POSITIONS = ['qb', 'rb', 'wr1', 'wr2', 'wr3', 'te'];
+const TOP_SKILL_POSITIONS = ['qb', 'rb', 'wr1', 'te']; // Superstars only
+const ALL_SKILL_POSITIONS = ['qb', 'rb', 'wr1', 'wr2', 'wr3', 'te']; // Includes lesser-known WRs
 const OL_POSITIONS = ['lt', 'lg', 'c', 'rg', 'rt'];
 const DEFENSE_POSITIONS = [
   'lde', 'rde', 'ldt', 'rdt',
@@ -16,11 +17,11 @@ const DEFENSE_POSITIONS = [
 function getPositionKeysForDifficulty(difficulty: Difficulty): string[] {
   switch (difficulty) {
     case 'easy':
-      return SKILL_POSITIONS;
+      return TOP_SKILL_POSITIONS;
     case 'medium':
-      return [...SKILL_POSITIONS, ...DEFENSE_POSITIONS];
+      return ALL_SKILL_POSITIONS;
     case 'hard':
-      return [...SKILL_POSITIONS, ...DEFENSE_POSITIONS, ...OL_POSITIONS];
+      return [...ALL_SKILL_POSITIONS, ...OL_POSITIONS, ...DEFENSE_POSITIONS];
     case 'master':
       return [];
   }
